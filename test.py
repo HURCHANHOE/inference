@@ -32,7 +32,7 @@ def create_prompt_data() -> Dict:
     }
 
 
-def prepare_model_prompt(prompt_data: Dict, user_input: str) -> str:
+def prepare_model_prompt(prompt_data: Dict) -> str:
     prompt = prompt_data["system"] + "\n\nexample:\n"
     
     # Add example inputs and outputs
@@ -55,7 +55,7 @@ def load_wheelchair_model(model_path: str):
         stop=["\n", "\n\n", "input:", "```\n"],
         f16_kv=True,
         verbose=False,
-        chat_format="qwen2.5",
+        chat_format="qwen",
     )
     return llms
  

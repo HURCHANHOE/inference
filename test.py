@@ -46,7 +46,7 @@ def prepare_model_prompt(prompt_data: Dict, user_input: str) -> str:
 
 
 def load_wheelchair_model(model_path: str):
-    # Load model and tokenizer
+    # Load model
     llms = Llama(
         model_path = model_path,
         n_ctx=2048,
@@ -58,12 +58,24 @@ def load_wheelchair_model(model_path: str):
         chat_format="qwen2.5",
     )
     return llms
-
-def stream_chat_completion(llms, messages, **kwargs):
+ 
+def run (llms, template, user_input, **kwargs):
+    full_prompt = template
+    messages = [
+                    {"role": "system", "content": full_prompt},
+                    {
+                        "role": "input",
+                        "content": user_input
+                    }
+                ]
+            
     kwargs['stream'] = True
+    result = ''
     for chunk in llms.create_chat_completion(messages=messages, **kwargs):
         if 'choices' in chunk and chunk['choices'][0].get('delta', {}).get('content'):
             print(chunk['choices'][0]['delta']['content'], end='', flush=True)
+            result += chunk['choices'][0]['delta']['content']
+    return result
 
 def main():
     MODEL_PATH = "/home/models/Qwen2.5-0.5B-Instruct"
@@ -83,15 +95,7 @@ def main():
         
         # Process and display result
         try:
-            stream_chat_completion(llms,
-                messages=[
-                    {"role": "system", "content": full_prompt},
-                    {
-                        "role": "input",
-                        "content": user_input
-                    }
-                ]
-            )
+            run(llms, full_prompt, user_input)
         except Exception as e:
             print(f"오류 발생: {e}")
 

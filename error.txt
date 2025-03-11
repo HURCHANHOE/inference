@@ -1,0 +1,3 @@
+- gguf 모델 로드 후
+    raise TypeError('must be called with a dataclass type or instance') from None
+TypeError: must be called with a dataclass type or instance

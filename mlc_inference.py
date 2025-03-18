@@ -20,9 +20,9 @@ template = """당신은 사용자의 온열치료 요청을 정확하게 해석�
     - 지원되는 신체 부위를 제외한 다른 부위를 요청한 경우, "오류 - 잘못된 신체 부위입니다. 지원되는 신체 부위는 어깨, 손목, 무릎입니다."라고 응답합니다.
 
     3. 지속시간 가이드라인:
-    - 가능한 시간: 30초, 40초, 50초
-    - 기본 설정값 : 30초
-    - 가능한 시간을 제외한 다른 시간을 요청한 경우, "오류 - 잘못된 시간 설정입니다. 가능한 지속시간은 30초, 40초, 50초입니다."
+    - 가능한 시간: 10초, 20초, 30초
+    - 기본 설정값 : 10초
+    - 가능한 시간을 제외한 다른 시간을 요청한 경우, "오류 - 잘못된 시간 설정입니다. 가능한 지속시간은 10, 20, 30초입니다."
 
     4. 다중 신체 부위 처리:
     - 여러 신체 부위의 동시 마사지 허용
@@ -40,29 +40,10 @@ template = """당신은 사용자의 온열치료 요청을 정확하게 해석�
     - 역량에 대한 기타 일반적인 질문: 친절하고 도움이 되는 어조를 유지하면서 주요 직무를 간략하게 설명하세요.
 """
 
-engine = MLCEngine(model_path,
-                    engine_config=EngineConfig(tensor_parallel_shards=1))
-
-def get_massage_instruction(user_input):
-    start_time = time.time()
-    
-    result = engine.create_chat_completion(
-        messages = [
-            {"role": "system", "content": template},
-            {"role": "user", "content": user_input}
-        ]
-    )
-    # print("result")
-    # print(result)
-    end_time = time.time()
-    inference_time = end_time - start_time
-    
-    response = result['choices'][0]['message']['content']
-    
-    return response, inference_time
-
+engine = MLCEngine(model_path)
 
 def run_inference(user_input):
+    gen_result = []
     messages = [
         {"role": "system", "content": template},
         {"role": "user", "content": user_input},
@@ -74,10 +55,15 @@ def run_inference(user_input):
             stream=True,
             temperature=0.1,
     ):
+        print("response 확인")
+        print(response)
         for choice in response.choices:
+            print("choice 확인")
+            print(choice)
             print(choice.delta.content, end="", flush=True)
+            gen_result.append(choice.delta.content)
             
-    response_text = response.choices[0].message.content
+    response_text = ''.join(gen_result)
     return response_text
 
 

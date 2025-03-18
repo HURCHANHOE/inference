@@ -1,12 +1,13 @@
 import sys
 import gc
 import time
+import datetime
 import torch
 
 from mlc_llm import MLCEngine
 from mlc_llm.serve.config import EngineConfig
 
-model_path='/app/models/massage_8B_v4.gguf'
+model_path='Llama-3.1-8B-Instruct-q4f16_1-MLC'
 
 template = """당신은 사용자의 온열치료 요청을 정확하게 해석하고 여러 신체 부위에 대한 온열치료 설정을 도와주는 보조 로봇인 도비입니다. 다음의 지침을 기억하세요.
     포괄적인 온열치료 설정 가이드라인:
@@ -44,27 +45,50 @@ engine = MLCEngine(model_path)
 
 def run_inference(user_input):
     gen_result = []
+    token_count = 0
+    first_token_time = None
+    
     messages = [
         {"role": "system", "content": template},
         {"role": "user", "content": user_input},
     ]
-
+    
+    start = time.perf_counter()
+    
     for response in engine.chat.completions.create(
             messages=messages,
             model=model_path,
             stream=True,
             temperature=0.1,
     ):
-        print("response 확인")
-        print(response)
+        if first_token_time is None and hasattr(response, 'created'):
+            first_token_time = response.created
+            ttft = first_token_time - start
+            print(f"\n첫 토큰 생성 시간 (TTFT): {ttft:.4f}초")
+            
+        # 첫 토큰이 생성되는 시간 측정
+        # current_time = time.perf_counter()
+        # if ttft is None:
+        #     ttft = current_time - start
+        #     print(f"\n첫 토큰 생성 시간 (TTFT): {ttft:.4f}초")
+            
         for choice in response.choices:
             print("choice 확인")
             print(choice)
             print(choice.delta.content, end="", flush=True)
             gen_result.append(choice.delta.content)
+            token_count += 1
             
+    end = time.perf_counter()
+    latency = start - end
     response_text = ''.join(gen_result)
-    return response_text
+    
+    if token_count > 0 and (latency - ttft) > 0:
+        tps = token_count -1 / (latency - ttft)
+    else:
+        tps = 0
+        
+    return response_text, latency
 
 
 # 메인 루프
@@ -76,8 +100,9 @@ while True:
         engine.terminate()
         break
     
-    response = run_inference(user_input)
+    response, latency = run_inference(user_input)
     print(f"\n응답: {response}")
+    print(f"\nlatency : {latency}")
     
     torch.cuda.empty_cache()
     gc.collect()

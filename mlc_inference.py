@@ -47,6 +47,7 @@ def run_inference(user_input):
     gen_result = []
     token_count = 0
     first_token_time = None
+    ttft = None
     
     messages = [
         {"role": "system", "content": template},
@@ -61,26 +62,26 @@ def run_inference(user_input):
             stream=True,
             temperature=0.1,
     ):
-        if first_token_time is None and hasattr(response, 'created'):
-            first_token_time = response.created
-            ttft = first_token_time - start
-            print(f"\n첫 토큰 생성 시간 (TTFT): {ttft:.4f}초")
-            
-        # 첫 토큰이 생성되는 시간 측정
-        # current_time = time.perf_counter()
-        # if ttft is None:
-        #     ttft = current_time - start
+        # if first_token_time is None and hasattr(response, 'created'):
+        #     first_token_time = response.created
+        #     ttft = first_token_time - start
         #     print(f"\n첫 토큰 생성 시간 (TTFT): {ttft:.4f}초")
             
+        # 첫 토큰이 생성되는 시간 측정
+        current_time = time.perf_counter()
+        if ttft is None:
+            ttft = current_time - start
+            print(f"\n첫 토큰 생성 시간 (TTFT): {ttft:.4f}초")
+            
         for choice in response.choices:
-            print("choice 확인")
-            print(choice)
+            # print("choice 확인")
+            # print(choice)
             print(choice.delta.content, end="", flush=True)
             gen_result.append(choice.delta.content)
             token_count += 1
             
     end = time.perf_counter()
-    latency = start - end
+    latency = end - start
     response_text = ''.join(gen_result)
     
     if token_count > 0 and (latency - ttft) > 0:
@@ -88,7 +89,7 @@ def run_inference(user_input):
     else:
         tps = 0
         
-    return response_text, latency
+    return response_text, latency, ttft, tps, token_count
 
 
 # 메인 루프
@@ -100,9 +101,11 @@ while True:
         engine.terminate()
         break
     
-    response, latency = run_inference(user_input)
+    response, latency, ttft, tps, token_count = run_inference(user_input)
     print(f"\n응답: {response}")
-    print(f"\nlatency : {latency}")
-    
+    print(f"\nlatency : {latency}초")
+    print(f"\ntime to first token : {ttft.4f}초")
+    print(f"\ntoken per second : {tps.4f}초")
+    print(f"\ntoken_count : {token_count}개")
     torch.cuda.empty_cache()
     gc.collect()
